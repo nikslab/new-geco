@@ -1,1 +1,3 @@
-tmp
+logs/*
+config.php
+test.php
