@@ -2,6 +2,7 @@
 
 require_once "config.php";
 
+// Database connection, always
 try {
     $pdo = new PDO("mysql:host=$DB_SERVER;dbname=$DB_NAME", $DB_USER, $DB_PASSWORD);
     // set the PDO error mode to exception
@@ -11,18 +12,22 @@ try {
     logThis(1, "Connection to database failed: " . $e->getMessage());
 }
 
-function dbInsert($sql) {
-    global $pdo;
-
-    $statement = $pdo->prepare($sql);
-    $statement->execute();
-}
+/**************************************** 
+    DATABASE
+*****************************************/
 
 function dbSelect($sql) {
     global $pdo;
 
     $data = $pdo->query($sql)->fetchAll();
     return $data;
+}
+
+function dbInsert($sql) {
+    global $pdo;
+
+    $statement = $pdo->prepare($sql);
+    $statement->execute();
 }
 
 function dbTransaction($transaction) {
@@ -37,12 +42,16 @@ function dbTransaction($transaction) {
 }
 
 function dbClose() {
-    $conn = null;
+    global $pdo;
+    $pdo = null;
 }
 
+/**************************************** 
+    LOGGING
+*****************************************/
+
 function logThis($level, $msg) {
-    global $LOG_FILE;
-    global $LOG_LEVEL;
+    global $LOG_FILE, $LOG_LEVEL, $LOG_PRINT;
 
     if ($level <= $LOG_LEVEL) {
         $now = date('Y-m-d H:i:s');
@@ -50,8 +59,15 @@ function logThis($level, $msg) {
         $fp = fopen($LOG_FILE, 'a');
         fwrite($fp, $entry);
         fclose($fp);
+        if ($LOG_PRINT) {
+            print "$entry";
+        }
     }
 }
+
+/**************************************** 
+    HELPERS 
+*****************************************/
 
 function enumBinary($digits) {
     $result = [];
@@ -72,4 +88,40 @@ function enumMemory($moves) {
         $result = array_merge($result, $x);
     }
     return $result;
+}
+
+function randomScore($experiment_id, $generation) {
+    global $pdo;
+
+    $sql = "
+        SELECT id 
+        FROM bots 
+        WHERE experiment_id=$experiment_id 
+          AND generation=$generation
+          AND score IS NULL
+    ";
+    $bots = dbSelect($sql);
+    $num = count($bots);
+
+    $transaction = [];
+    for ($i=0; $i<$num; $i++) {
+        $score = rand(0, 500) / 100;
+        $id = $bots[$i]['id'];
+        $sql = "UPDATE bots SET score=$score WHERE id=$id;";
+        $transaction[] = $sql;
+    }
+    var_dump($transaction);
+    dbTransaction($transaction);
+}
+
+function loadGeneration($experiment_id, $generation) {
+    $sql = "
+        SELECT bot_id, gene, allele, score 
+        FROM bots RIGHT JOIN genes ON bot_id=bots.id 
+        WHERE experiment_id=$experiment_id and generation=$generation
+    ";
+    $generation = [];
+    $generation = dbSelect($sql);
+
+    return $generation;
 }

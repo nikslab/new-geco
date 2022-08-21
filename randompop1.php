@@ -5,6 +5,9 @@ require_once "functions.php";
 
 $experiment_id = $argv[1];
 
+logThis(3, "Starting...");
+logThis(3, "Creating random population for experiment_id=$experiment_id");
+
 // Read experiment options
 $sql = "SELECT experiment_options FROM experiments WHERE id=$experiment_id";
 $result = dbSelect($sql);
@@ -41,7 +44,7 @@ for ($pop=1; $pop<=$population; $pop++) {
     $result = dbSelect($sql);
     $bot_id = $result[0]['id'];
 
-    // Generate DNA
+    // Generate random DNA
     $genes = [];
     $a[0] = "";
     $b = enumMemory($memory);
@@ -70,6 +73,11 @@ for ($pop=1; $pop<=$population; $pop++) {
 }
 dbTransaction($transaction);
 print "\nFinished.\n";
+dbClose();
+logThis(0, "Finished");
+exit(0);
+
+/**************************************************************************/
 
 function randomGene($minlen, $maxlen, $coop) {
     

@@ -4,3 +4,8 @@ $DB_SERVER = "localhost";
 $DB_NAME = "new_geco";
 $DB_USER = "new_geco";
 $DB_PASSWORD = "8sngOhg8wJ";
+
+$LOG_FILE = "log.txt";
+$LOG_LEVEL = 5;
+$LOG_PRINT = true;
+
