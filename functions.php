@@ -33,12 +33,18 @@ function dbInsert($sql) {
 function dbTransaction($transaction) {
     global $pdo;
 
-    $pdo->beginTransaction();
-    foreach($transaction as $statement) {
-        $statement = $pdo->prepare($statement);
-        $statement->execute();
+    try {
+        $pdo->beginTransaction();
+        foreach($transaction as $statement) {
+            $statement = $pdo->prepare($statement);
+            $statement->execute();
+        }
+        $pdo->commit();
+    } catch(PDOException $e) {
+        logThis(0, "Database transaction failed!");
+        print "Transaction failed... here is the transaction:\n";
+        var_dump($transaction);
     }
-    $pdo->commit();
 }
 
 function dbClose() {
@@ -53,15 +59,24 @@ function dbClose() {
 function logThis($level, $msg) {
     global $LOG_FILE, $LOG_LEVEL, $LOG_PRINT;
 
+    $script = basename($_SERVER['PHP_SELF'], '.php');
+
     if ($level <= $LOG_LEVEL) {
         $now = date('Y-m-d H:i:s');
-        $entry = "$now [$level] $msg\n";
+        $entry = "$now $script [$level] $msg\n";
+        if ($level < 1) {
+            $entry .= "$now $script [$level] ...exiting\n";
+            print "$entry";
+        }    
         $fp = fopen($LOG_FILE, 'a');
         fwrite($fp, $entry);
         fclose($fp);
         if ($LOG_PRINT) {
             print "$entry";
         }
+    }
+    if ($level < 1) {
+        exit(0);
     }
 }
 
@@ -90,7 +105,7 @@ function enumMemory($moves) {
     return $result;
 }
 
-function randomScore($experiment_id, $generation) {
+function randomScores($experiment_id, $generation) {
     global $pdo;
 
     $sql = "
@@ -110,18 +125,28 @@ function randomScore($experiment_id, $generation) {
         $sql = "UPDATE bots SET score=$score WHERE id=$id;";
         $transaction[] = $sql;
     }
-    var_dump($transaction);
     dbTransaction($transaction);
 }
 
 function loadGeneration($experiment_id, $generation) {
     $sql = "
-        SELECT bot_id, gene, allele, score 
+        SELECT bot_id, gene, allele 
         FROM bots RIGHT JOIN genes ON bot_id=bots.id 
         WHERE experiment_id=$experiment_id and generation=$generation
     ";
-    $generation = [];
-    $generation = dbSelect($sql);
+    $pop1 = [];
+    $pop1 = dbSelect($sql);
 
-    return $generation;
+    $pop = [];
+    if (count($pop1) < 1) {
+        $pop = false;
+    } else {
+        foreach($pop1 as $p) {
+            $bot_id = $p['bot_id'];
+            $gene = $p['gene'];
+            $allele = $p['allele'];
+            $pop[$bot_id][$gene]=$allele;
+        }
+    }
+    return $pop;
 }
