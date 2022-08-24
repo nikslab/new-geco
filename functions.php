@@ -150,3 +150,10 @@ function loadGeneration($experiment_id, $generation) {
     }
     return $pop;
 }
+
+function getExperimentOptions($experiment_id) {
+    $sql = "SELECT experiment_options FROM experiments WHERE id=$experiment_id";
+    $result = dbSelect($sql);
+    $options = json_decode($result[0]['experiment_options'], true);
+    return $options;
+}

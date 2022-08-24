@@ -9,12 +9,11 @@ logThis(3, "Starting...");
 logThis(3, "Creating random population for experiment_id=$experiment_id");
 
 // Read experiment options
-$sql = "SELECT experiment_options FROM experiments WHERE id=$experiment_id";
-$result = dbSelect($sql);
-$options = json_decode($result[0]['experiment_options'], true);
+$options = getExperimentOptions($experiment_id);
 $memory = $options['memory'];
 $coop = $options['cooperative'];
 $population = $options['population'];
+logThis(4, "Read options: memory=$memory; coop=$coop; pop=$population;");
 
 $transaction = [];
 
@@ -72,7 +71,6 @@ for ($pop=1; $pop<=$population; $pop++) {
     }
 }
 dbTransaction($transaction);
-print "\nFinished.\n";
 dbClose();
 logThis(0, "Finished");
 exit(0);

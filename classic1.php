@@ -12,6 +12,17 @@ $run_generations = $argv[2];
     PREP
 *****************************************/
 
+// Read experiment options
+$options = getExperimentOptions($experiment_id);
+$memory = $options['memory'];
+$coop = $options['cooperative'];
+$population = $options['population'];
+$mutation_rate = $options['mutation_rate'];
+$coverage = $options['coverage'];
+$option_w = $options['w'];
+logThis(4, "Read options: memory=$memory; coop=$coop; pop=$population; mutation_rate=$mutation_rate");
+logThis(4, "Read options: coverage=$coverage; w=$options_w;");
+
 // Figure out last generation to work on
 $sql = "
     SELECT max(generation) as gen 
@@ -71,8 +82,15 @@ logThis(0, "Finished");
 /**************************************************************************/
 
 function ipdTournament($experiment_id, $generation) {
-    randomScores($experiment_id, $generation);
+    //randomScores($experiment_id, $generation);
+    global $coverage, $option_w;
+
     logThis(3, "IPD tournament for experiment $experiment_id, generation $generation");
+    $population = loadGeneration($experiment_id, $generation);
+
+    foreach() {
+
+    }
 }
 
 function matingSeason($experiment_id, $generation) {
@@ -168,34 +186,82 @@ function matingSeason($experiment_id, $generation) {
             $cut = rand(0, $DNA_len-1);
             $child = [];
             $array_keys = array_keys($population[$mother]);
+            // Mother's genes
             $c = $cut;
             foreach ($array_keys as $gene) {
                 if ($c > 0) {
                     $allele = $population[$mother][$gene];
-                    $child[$gene] = $allele;
-                    $sql = "INSERT INTO genes (bot_id, gene, allele) VALUES ($bot_id, '$gene', '$allele');";
+                    $m = mutated($allele);
+                    if ($m != $allele) { $mutated = "'1'"; }
+                    else { $mutated = "NULL"; }
+                    $child[$gene] = $m;
+                    $sql = "INSERT INTO genes (bot_id, gene, allele, mutated) VALUES ($bot_id, '$gene', '$allele', $mutated);";
                     $transaction[] = $sql;
                 }
                 $c--;
             }
+            // Father's genes
             $c = $cut;
             foreach ($array_keys as $gene) {
                 if ($c <= 0) {
                     $allele = $population[$father][$gene];
-                    $child[$gene] = $allele;
-                    $sql = "INSERT INTO genes (bot_id, gene, allele) VALUES ($bot_id, '$gene', '$allele');";
-                    $transaction[] = $sql;    
+                    $m = mutated($allele);
+                    if ($m != $allele) { $mutated = "'1'"; }
+                    else { $mutated = "NULL"; }
+                    $child[$gene] = $m;
+                    $sql = "INSERT INTO genes (bot_id, gene, allele, mutated) VALUES ($bot_id, '$gene', '$allele', $mutated);";
+                    $transaction[] = $sql;
                 }
                 $c--;
             }
-
+            // Geneaology
+            $sql = "INSERT INTO geneaology (bot_id, parent_id) VALUES ($bot_id, $mother);";
+            $transaction[] = $sql;        
+            $sql = "INSERT INTO geneaology (bot_id, parent_id) VALUES ($bot_id, $father);";
+            $transaction[] = $sql;        
         }
         dbTransaction($transaction);
-        //var_dump($transaction);
-        logThis(3, "Created new generation experiment $experiment_id, generation $generation");
+        logThis(3, "Created new generation experiment $experiment_id, generation $new_generation");
 
     } else {
         logthis(0, "Ups! Something went wrong, can't read experiment $experiment_id, generation $generation");
     }
 
+}
+
+function mutated($allele) {
+    global $mutation_rate;
+
+    $roll = rand(0,100000)/100000;
+    if ($roll < $mutation_rate) {
+        $allele = abs($allele - 1);
+    }
+    return $allele;
+}
+
+function iPD($player1, $player2, $w, $) {
+    $history1 = ""; $history2 = "";
+    $score1 = 0; $score2 = 0;
+    $moves = 0;
+    $transaction = [];
+
+    // Create an ipd_games
+
+    $game_id = 
+
+    $dice = rand(0,1000)/1000;
+    while ($dice < $w) {
+        $moves++;
+        
+        $dice = rand(0,1000)/1000;
+    }
+
+    dbTransaction($transaction);
+
+    $result = [];
+    $avg_score1 = round($score1 / $moves, 2);
+    $avg_score2 = round($score2 / $moves, 2);
+    $result['score']['1'] = $avg_score1;
+    $result['score']['2'] = $avg_score2;
+    return $result;
 }
