@@ -21,7 +21,7 @@ $mutation_rate = $options['mutation_rate'];
 $coverage = $options['coverage'];
 $option_w = $options['w'];
 logThis(4, "Read options: memory=$memory; coop=$coop; pop=$population; mutation_rate=$mutation_rate");
-logThis(4, "Read options: coverage=$coverage; w=$options_w;");
+logThis(4, "Read options: coverage=$coverage; w=$option_w;");
 
 // Figure out last generation to work on
 $sql = "
@@ -60,6 +60,8 @@ $target_generation = $current_generation + $run_generations;
 *****************************************/
 
 for ($i=0; $i<$run_generations; $i++) {
+    logThis(2, "GENERATION $current_generation");
+    $options = getExperimentOptions($experiment_id); // Reread options
     $start_time = time();
     ipdTournament($experiment_id, $current_generation);
     matingSeason($experiment_id, $current_generation);
@@ -83,14 +85,97 @@ logThis(0, "Finished");
 
 function ipdTournament($experiment_id, $generation) {
     //randomScores($experiment_id, $generation);
-    global $coverage, $option_w;
+    global $options;
 
     logThis(3, "IPD tournament for experiment $experiment_id, generation $generation");
+
     $population = loadGeneration($experiment_id, $generation);
+    $bots = array_keys($population);
+    
+    $play_games = ($options['coverage']*sizeof($population))/2;
+    
+    $scores = [];
+    $games_played = [];
 
-    foreach() {
+    foreach($bots as $bot1_id) {
+        $pg = $play_games;
+        while ($pg > 0) {
+            $pg--;
+            // Pick the other player
+            $bot2_id = $bot1_id;
+            while($bot1_id == $bot2_id) {
+                $dice = array_rand($bots);
+                $bot2_id = $bots[$dice];    
+            }
+            $player1 = $population[$bot1_id];
+            $player2 = $population[$bot2_id];
 
+            // Create a game in ipd_games
+            $uniq = uniqid();
+            $sql = "
+                INSERT INTO ipd_games (
+                    game_uniq, 
+                    created_at, 
+                    experiment_id, 
+                    generation,
+                    bot1_id,
+                    bot2_id
+                ) VALUES (
+                    '$uniq', 
+                    NOW(), 
+                    $experiment_id,
+                    $generation,
+                    $bot1_id,
+                    $bot2_id
+                )
+            ";
+            dbInsert($sql);
+
+            // Get game id
+            $sql = "SELECT id FROM ipd_games WHERE game_uniq='$uniq'";
+            $result = dbSelect($sql);
+            $game_id = $result[0]['id'];
+
+            logThis(5, "iPD game between bots id $bot1_id and $bot2_id");
+            $r = iPD($game_id, $bot1_id, $player1, $bot2_id, $player2, $options);
+            $score1 = $r['score1'];
+            $score2 = $r['score2'];
+            $history = $r['history'];
+            $transaction = $r['transaction'];
+
+            if (isset($games_played[$bot1_id])) {
+                $games_played[$bot1_id]++;
+            } else { $games_played[$bot1_id]=1; }
+
+            if (isset($games_played[$bot2_id])) {
+                $games_played[$bot2_id]++;
+            } else { $games_played[$bot2_id]=1; }
+
+            if (isset($scores[$bot1_id])) {
+                $scores[$bot1_id] += $score1;
+            } else { $scores[$bot1_id] = $score1; }
+
+            if (isset($scores[$bot2_id])) {
+                $scores[$bot2_id] += $score1;
+            } else { $scores[$bot2_id] = $score2; }
+
+            logThis(5, "iPD game results: $score1:$score2 $history");
+            dbTransaction($transaction);
+        }
     }
+
+
+    // Tournament finished compute average scores and update database
+    //$avg_scores = [];
+    $transaction = [];
+    foreach($bots as $bot_id) {
+        $avg = round($scores[$bot_id] / $games_played[$bot_id], 2);
+        //$avg_scores[$bot_id] = $avg;
+        $sql = "UPDATE bots SET score=$avg WHERE id=$bot_id;";
+        $transaction[] = $sql;
+    }
+    dbTransaction($transaction);
+
 }
 
 function matingSeason($experiment_id, $generation) {
@@ -230,38 +315,62 @@ function matingSeason($experiment_id, $generation) {
 }
 
 function mutated($allele) {
-    global $mutation_rate;
+    global $options;
 
     $roll = rand(0,100000)/100000;
-    if ($roll < $mutation_rate) {
+    if ($roll < $options['mutation_rate']) {
         $allele = abs($allele - 1);
     }
     return $allele;
 }
 
-function iPD($player1, $player2, $w, $) {
+function iPD($game_id, $bot1_id, $p1_DNA, $bot2_id, $p2_DNA, $options) {
+
+    $memory = $options['memory'];
+    $w = $options['w'];
+    $rewards = $options['rewards'];
+ 
     $history1 = ""; $history2 = "";
     $score1 = 0; $score2 = 0;
     $moves = 0;
     $transaction = [];
 
-    // Create an ipd_games
-
-    $game_id = 
-
-    $dice = rand(0,1000)/1000;
+    $dice = 0;
     while ($dice < $w) {
+        
         $moves++;
         
+        $h1 = substr($history1, $memory*2*-1);
+        $h2 = substr($history2, $memory*2*-1);
+        $play1 = $p1_DNA[$h1];
+        $play2 = $p2_DNA[$h2];
+
+        $sql = "INSERT INTO pd_moves (ipd_game_id, bot_id, gene, allele) VALUES ($game_id, $bot1_id, '$h1', '$play1');";
+        $transaction[] = $sql;
+        $sql = "INSERT INTO pd_moves (ipd_game_id, bot_id, gene, allele) VALUES ($game_id, $bot2_id, '$h2', '$play2');";
+        $transaction[] = $sql;
+
+        $h1 = $play1 . $play2;
+        $h2 = $play2 . $play1;
+        $history1 .= $h1;
+        $history2 .= $h2;
+        $score1 += $rewards[$h1];
+        $score2 += $rewards[$h2];
+
         $dice = rand(0,1000)/1000;
+        
     }
 
-    dbTransaction($transaction);
-
-    $result = [];
     $avg_score1 = round($score1 / $moves, 2);
     $avg_score2 = round($score2 / $moves, 2);
-    $result['score']['1'] = $avg_score1;
-    $result['score']['2'] = $avg_score2;
+    
+    $sql = "UPDATE ipd_games SET score1=$avg_score1, score2=$avg_score2, moves=$moves, history1='$history1' WHERE id=$game_id;";
+    $transaction[] = $sql;
+  
+    $result['history'] = $history1;
+    $result['score1'] = $avg_score1;
+    $result['score2'] = $avg_score2;
+    $result['transaction'] = $transaction;
+
     return $result;
 }
