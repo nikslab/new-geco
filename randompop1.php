@@ -61,7 +61,7 @@ for ($pop=1; $pop<=$population; $pop++) {
     foreach ($DNA as $g) {
         $gene = $g[0];
         $allele = $g[1];
-        $sql = "INSERT INTO genes (bot_id, gene, allele) VALUES ('$bot_id', '$gene', '$allele');";
+        $sql = "INSERT INTO genes (experiment_id, generation, bot_id, gene, allele) VALUES ($experiment_id, 0, '$bot_id', '$gene', '$allele');";
         $transaction[] = $sql;
     }
 }

@@ -131,7 +131,7 @@ function randomScores($experiment_id, $generation) {
 function loadGeneration($experiment_id, $generation) {
     $sql = "
         SELECT bot_id, gene, allele 
-        FROM bots RIGHT JOIN genes ON bot_id=bots.id 
+        FROM genes 
         WHERE experiment_id=$experiment_id and generation=$generation
     ";
     $pop1 = [];
