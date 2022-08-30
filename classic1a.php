@@ -70,7 +70,7 @@ for ($i=0; $i<$run_generations; $i++) {
     $elapsed_time = $end_time - $start_time;
     $remaining = gmdate("H:i:s", round(($target_generation-$current_generation)*$elapsed_time, 0));
     if (!$LOG_PRINT) {
-        print "$current_generation/$target_generation ($elapsed_time"."s per generation, ~ $remaining"."s remaining)\r";
+        print "$current_generation/$target_generation ($elapsed_time"."s per generation, ~ $remaining"."s remaining)\n";
     }
 }
 
@@ -96,7 +96,7 @@ function ipdTournament($experiment_id, $generation) {
     
     $scores = [];
     $games_played = [];
-    $super_transaction = [];
+    $transaction = [];
 
     foreach($bots as $bot1_id) {
         $pg = $play_games;
@@ -112,38 +112,33 @@ function ipdTournament($experiment_id, $generation) {
             $player2 = $population[$bot2_id];
 
             // Create a game in ipd_games
-            $uniq = uniqid();
+            $game_id = uniqid();
             $sql = "
                 INSERT INTO ipd_games (
-                    game_uniq, 
+                    id, 
                     created_at, 
                     experiment_id, 
                     generation,
                     bot1_id,
                     bot2_id
                 ) VALUES (
-                    '$uniq', 
+                    '$game_id', 
                     NOW(), 
                     $experiment_id,
                     $generation,
-                    $bot1_id,
-                    $bot2_id
+                    '$bot1_id',
+                    '$bot2_id'
                 )
             ";
-            dbInsert($sql);
-
-            // Get game id
-            $sql = "SELECT id FROM ipd_games WHERE game_uniq='$uniq'";
-            $result = dbSelect($sql);
-            $game_id = $result[0]['id'];
+            $transaction[] = $sql;
 
             logThis(5, "iPD game between bots id $bot1_id and $bot2_id");
             $r = iPD($game_id, $bot1_id, $player1, $bot2_id, $player2, $options);
             $score1 = $r['score1'];
             $score2 = $r['score2'];
             $history = $r['history'];
-            $transaction = $r['transaction'];
-            $super_transaction = array_merge($super_transaction, $transaction);
+            $t = $r['transaction'];
+            $transaction = array_merge($transaction, $t);
 
             if (isset($games_played[$bot1_id])) {
                 $games_played[$bot1_id]++;
@@ -164,16 +159,16 @@ function ipdTournament($experiment_id, $generation) {
             logThis(5, "iPD game results: $score1:$score2 $history");
         }
     }
-    dbTransaction($super_transaction);
+    //dbTransaction($transaction);
 
 
     // Tournament finished compute average scores and update database
     //$avg_scores = [];
-    $transaction = [];
+    //$transaction = [];
     foreach($bots as $bot_id) {
-        $avg = round($scores[$bot_id] / $games_played[$bot_id], 2);
+        $avg = round($scores[$bot_id] / $games_played[$bot_id], 4);
         //$avg_scores[$bot_id] = $avg;
-        $sql = "UPDATE bots SET score=$avg WHERE id=$bot_id;";
+        $sql = "UPDATE bots SET score=$avg WHERE id='$bot_id';";
         $transaction[] = $sql;
     }
     dbTransaction($transaction);
@@ -208,9 +203,9 @@ function matingSeason($experiment_id, $generation) {
         $transaction = [];
         for($i=0; $i<=$max; $i++) {
             $bot_id = $scores[$i]['bot_id'];
-            $fitness = round(1 - (($high - $scores[$i]['score']) / $range), 2);
+            $fitness = round(1 - (($high - $scores[$i]['score']) / $range), 4);
             $scores[$i]['fitness'] = $fitness;
-            $sql = "UPDATE bots SET fitness=$fitness WHERE id=$bot_id;";
+            $sql = "UPDATE bots SET fitness=$fitness WHERE id='$bot_id';";
             $transaction[] = $sql;
         }
         logThis(4, "Updating fitness scores");
@@ -248,26 +243,21 @@ function matingSeason($experiment_id, $generation) {
             logThis(5, "Mating mother bot_id=$mother and father bot_id=$father");
 
             // Create bot
-            $uniq = uniqid();
+            $bot_id = uniqid();
             $sql = "
                 INSERT INTO bots (
-                    bot_uniq, 
+                    id, 
                     created_at, 
                     experiment_id, 
                     generation
                 ) VALUES (
-                    '$uniq', 
+                    '$bot_id', 
                     NOW(), 
                     $experiment_id,
                     $new_generation
                 )
             ";
-            dbInsert($sql);
-
-            // Get bot_id
-            $sql = "SELECT id FROM bots WHERE bot_uniq='$uniq'";
-            $result = dbSelect($sql);
-            $bot_id = $result[0]['id'];
+            $transaction[] = $sql;
 
             // Sex
             $DNA_len = count($population[$mother]);
@@ -283,7 +273,7 @@ function matingSeason($experiment_id, $generation) {
                     if ($m != $allele) { $mutated = "'1'"; }
                     else { $mutated = "NULL"; }
                     $child[$gene] = $m;
-                    $sql = "INSERT INTO genes (bot_id, gene, allele, mutated) VALUES ($bot_id, '$gene', '$m', $mutated);";
+                    $sql = "INSERT INTO genes (bot_id, gene, allele, mutated) VALUES ('$bot_id', '$gene', '$m', $mutated);";
                     $transaction[] = $sql;
                 }
                 $c--;
@@ -297,15 +287,15 @@ function matingSeason($experiment_id, $generation) {
                     if ($m != $allele) { $mutated = "'1'"; }
                     else { $mutated = "NULL"; }
                     $child[$gene] = $m;
-                    $sql = "INSERT INTO genes (bot_id, gene, allele, mutated) VALUES ($bot_id, '$gene', '$m', $mutated);";
+                    $sql = "INSERT INTO genes (bot_id, gene, allele, mutated) VALUES ('$bot_id', '$gene', '$m', $mutated);";
                     $transaction[] = $sql;
                 }
                 $c--;
             }
             // Geneaology
-            $sql = "INSERT INTO geneaology (bot_id, parent_id) VALUES ($bot_id, $mother);";
+            $sql = "INSERT INTO geneaology (bot_id, parent_id) VALUES ('$bot_id', '$mother');";
             $transaction[] = $sql;        
-            $sql = "INSERT INTO geneaology (bot_id, parent_id) VALUES ($bot_id, $father);";
+            $sql = "INSERT INTO geneaology (bot_id, parent_id) VALUES ('$bot_id', '$father');";
             $transaction[] = $sql;        
         }
         dbTransaction($transaction);
@@ -348,9 +338,9 @@ function iPD($game_id, $bot1_id, $p1_DNA, $bot2_id, $p2_DNA, $options) {
         $play1 = $p1_DNA[$h1];
         $play2 = $p2_DNA[$h2];
 
-        $sql = "INSERT INTO pd_moves (ipd_game_id, bot_id, gene, allele) VALUES ($game_id, $bot1_id, '$h1', '$play1');";
+        $sql = "INSERT INTO pd_moves (ipd_game_id, bot_id, gene, allele) VALUES ('$game_id', '$bot1_id', '$h1', '$play1');";
         $transaction[] = $sql;
-        $sql = "INSERT INTO pd_moves (ipd_game_id, bot_id, gene, allele) VALUES ($game_id, $bot2_id, '$h2', '$play2');";
+        $sql = "INSERT INTO pd_moves (ipd_game_id, bot_id, gene, allele) VALUES ('$game_id', '$bot2_id', '$h2', '$play2');";
         $transaction[] = $sql;
 
         $h1 = $play1 . $play2;
@@ -364,10 +354,10 @@ function iPD($game_id, $bot1_id, $p1_DNA, $bot2_id, $p2_DNA, $options) {
         
     }
 
-    $avg_score1 = round($score1 / $moves, 2);
-    $avg_score2 = round($score2 / $moves, 2);
+    $avg_score1 = round($score1 / $moves, 4);
+    $avg_score2 = round($score2 / $moves, 4);
     
-    $sql = "UPDATE ipd_games SET score1=$avg_score1, score2=$avg_score2, moves=$moves, history1='$history1' WHERE id=$game_id;";
+    $sql = "UPDATE ipd_games SET score1=$avg_score1, score2=$avg_score2, moves=$moves, history1='$history1' WHERE id='$game_id';";
     $transaction[] = $sql;
   
     $result['history'] = $history1;

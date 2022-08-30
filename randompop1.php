@@ -22,26 +22,21 @@ for ($pop=1; $pop<=$population; $pop++) {
     print "$pop/$population    \r";
     
     // Create bot
-    $uniq = uniqid();
+    $bot_id = uniqid();
     $sql = "
         INSERT INTO bots (
-            bot_uniq, 
+            id, 
             created_at, 
             experiment_id, 
             generation
         ) VALUES (
-            '$uniq', 
+            '$bot_id', 
             NOW(), 
             $experiment_id,
             '0'
         )
     ";
-    dbInsert($sql);
-
-    // Get bot_id
-    $sql = "SELECT id FROM bots WHERE bot_uniq='$uniq'";
-    $result = dbSelect($sql);
-    $bot_id = $result[0]['id'];
+    $transaction[] = $sql;
 
     // Generate random DNA
     $genes = [];
@@ -66,7 +61,7 @@ for ($pop=1; $pop<=$population; $pop++) {
     foreach ($DNA as $g) {
         $gene = $g[0];
         $allele = $g[1];
-        $sql = "INSERT INTO genes (bot_id, gene, allele) VALUES ($bot_id, '$gene', '$allele');";
+        $sql = "INSERT INTO genes (bot_id, gene, allele) VALUES ('$bot_id', '$gene', '$allele');";
         $transaction[] = $sql;
     }
 }

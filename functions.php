@@ -41,9 +41,9 @@ function dbTransaction($transaction) {
         }
         $pdo->commit();
     } catch(PDOException $e) {
-        logThis(0, "Database transaction failed!");
-        print "Transaction failed... here is the transaction:\n";
+        print "Transaction failed..." . $e->getMessage() . " here is the transaction:\n";
         var_dump($transaction);
+        logThis(0, "Database transaction failed! Error: ". $e->getMessage());
     }
 }
 
