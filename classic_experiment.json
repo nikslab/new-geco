@@ -1,0 +1,15 @@
+{
+	"memory": "3",
+	"cooperative": "0.2",
+	"population": "100",
+        "mutation_rate": "0.005",
+        "coverage": "0.5",
+        "w": "0.95",
+        "rewards": {
+           "00": "1",
+           "01": "5",
+           "10": "0",
+           "11": "3"
+        }
+
+ }
