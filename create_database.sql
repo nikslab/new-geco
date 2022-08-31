@@ -59,12 +59,16 @@ DROP TABLE IF EXISTS `geneaology`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `geneaology` (
   `id` bigint NOT NULL AUTO_INCREMENT,
+  `experiment_id` bigint DEFAULT NULL,
+  `generation` bigint DEFAULT NULL,
   `bot_id` varchar(45) DEFAULT NULL,
   `parent_id` varchar(45) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_bot` (`bot_id`),
-  KEY `idx_parent` (`parent_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=23001 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  KEY `idx_parent` (`parent_id`),
+  KEY `idx_experiment` (`experiment_id`),
+  KEY `idx_generation` (`generation`)
+) ENGINE=InnoDB AUTO_INCREMENT=155201 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -76,6 +80,8 @@ DROP TABLE IF EXISTS `genes`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `genes` (
   `id` bigint NOT NULL AUTO_INCREMENT,
+  `experiment_id` bigint DEFAULT NULL,
+  `generation` bigint DEFAULT NULL,
   `bot_id` varchar(45) DEFAULT NULL,
   `gene` varchar(45) DEFAULT NULL,
   `allele` varchar(5) DEFAULT NULL,
@@ -83,8 +89,10 @@ CREATE TABLE `genes` (
   PRIMARY KEY (`id`),
   KEY `idx_gene` (`gene`),
   KEY `idx_allele` (`allele`),
-  KEY `idx_bot` (`bot_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=986086 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  KEY `idx_bot` (`bot_id`),
+  KEY `idx_experiment` (`experiment_id`),
+  KEY `idx_generation` (`generation`)
+) ENGINE=InnoDB AUTO_INCREMENT=6604501 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -120,6 +128,8 @@ DROP TABLE IF EXISTS `pd_moves`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `pd_moves` (
   `id` int NOT NULL AUTO_INCREMENT,
+  `experiment_id` bigint DEFAULT NULL,
+  `generation` bigint DEFAULT NULL,
   `ipd_game_id` varchar(45) DEFAULT NULL,
   `bot_id` varchar(45) DEFAULT NULL,
   `gene` varchar(45) DEFAULT NULL,
@@ -127,8 +137,9 @@ CREATE TABLE `pd_moves` (
   PRIMARY KEY (`id`),
   KEY `idx_bot` (`bot_id`),
   KEY `idx_gene` (`gene`),
-  KEY `idx_game` (`ipd_game_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=11382129 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  KEY `idx_game` (`ipd_game_id`),
+  KEY `idx_generation` (`generation`)
+) ENGINE=InnoDB AUTO_INCREMENT=76141171 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -140,4 +151,4 @@ CREATE TABLE `pd_moves` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2022-08-30 19:39:17
+-- Dump completed on 2022-08-31 19:12:53
